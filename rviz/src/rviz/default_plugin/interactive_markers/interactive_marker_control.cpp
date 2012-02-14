@@ -69,37 +69,14 @@ InteractiveMarkerControl::InteractiveMarkerControl( VisualizationManager* vis_ma
 , grab_point_(0,0,0)
 , interaction_enabled_(false)
 , visible_(true)
+, view_facing_( false )
 {
   name_ = message.name;
-  interaction_mode_ = message.interaction_mode;
-  always_visible_ = message.always_visible;
+  processMessage( message );
+}
 
-  orientation_mode_ = message.orientation_mode;
-
-  description_ = message.description;
-
-  control_orientation_ = Ogre::Quaternion(message.orientation.w,
-      message.orientation.x, message.orientation.y, message.orientation.z);
-  control_orientation_.normalise();
-
-  if (message.orientation_mode == visualization_msgs::InteractiveMarkerControl::VIEW_FACING)
-  {
-    vis_manager->getSceneManager()->addListener(this);
-  }
-
-  independent_marker_orientation_ = message.independent_marker_orientation;
-
-  //initially, the pose of this marker's node and the interactive marker are identical, but that may change
-  control_frame_node_->setPosition(parent_->getPosition());
-  markers_node_->setPosition(parent_->getPosition());
-
-  if ( orientation_mode_ == visualization_msgs::InteractiveMarkerControl::INHERIT )
-  {
-    control_frame_node_->setOrientation(parent_->getOrientation());
-    markers_node_->setOrientation(parent_->getOrientation());
-    intitial_orientation_ = parent->getOrientation();
-  }
-
+void InteractiveMarkerControl::makeMarkers( const visualization_msgs::InteractiveMarkerControl& message )
+{
   for (unsigned i = 0; i < message.markers.size(); i++)
   {
     MarkerBasePtr marker;
@@ -161,21 +138,19 @@ InteractiveMarkerControl::InteractiveMarkerControl( VisualizationManager* vis_ma
         ROS_ERROR( "Unknown marker type: %d", message.markers[i].type );
     }
 
-    marker->setMessage(message.markers[i]);
-    marker->setControl(this);
+    marker->setMessage( message.markers[ i ]);
+    marker->setInteractiveObject( this );
 
     addHighlightPass(marker->getMaterials());
 
-    // the marker will set it's position relative to the fixed frame,
-    // but we have attached it our own scene node,
-    // so we will have to correct for that
+    // The marker will set its position relative to the fixed frame,
+    // but we have attached it our own scene node, so we will have to
+    // correct for that.
     marker->setPosition( markers_node_->convertWorldToLocalPosition( marker->getPosition() ) );
     marker->setOrientation( markers_node_->convertWorldToLocalOrientation( marker->getOrientation() ) );
 
     markers_.push_back(marker);
   }
-
-  enableInteraction(vis_manager_->getSelectionManager()->getInteractionEnabled());
 }
 
 InteractiveMarkerControl::~InteractiveMarkerControl()
@@ -183,10 +158,62 @@ InteractiveMarkerControl::~InteractiveMarkerControl()
   vis_manager_->getSceneManager()->destroySceneNode(control_frame_node_);
   vis_manager_->getSceneManager()->destroySceneNode(markers_node_);
 
-  if (orientation_mode_ == visualization_msgs::InteractiveMarkerControl::VIEW_FACING)
+  if( view_facing_ )
   {
     vis_manager_->getSceneManager()->removeListener(this);
   }
+}
+
+void InteractiveMarkerControl::processMessage( const visualization_msgs::InteractiveMarkerControl &message )
+{
+  interaction_mode_ = message.interaction_mode;
+  always_visible_ = message.always_visible;
+
+  orientation_mode_ = message.orientation_mode;
+
+  description_ = message.description;
+
+  control_orientation_ = Ogre::Quaternion(message.orientation.w,
+      message.orientation.x, message.orientation.y, message.orientation.z);
+  control_orientation_.normalise();
+
+  bool new_view_facingness = (message.orientation_mode == visualization_msgs::InteractiveMarkerControl::VIEW_FACING);
+  if( new_view_facingness != view_facing_ )
+  {
+    if( new_view_facingness )
+    {
+      vis_manager_->getSceneManager()->addListener(this);
+    }
+    else
+    {
+      vis_manager_->getSceneManager()->removeListener(this);
+    }
+    view_facing_ = new_view_facingness;
+  }
+  
+  independent_marker_orientation_ = message.independent_marker_orientation;
+
+  // highlight_passes_ have raw pointers into the markers_, so must
+  // clear them at the same time.
+  highlight_passes_.clear();
+  markers_.clear();
+  points_markers_.clear();
+
+  // Initially, the pose of this marker's node and the interactive
+  // marker are identical, but that may change.
+  control_frame_node_->setPosition(parent_->getPosition());
+  markers_node_->setPosition(parent_->getPosition());
+
+  if ( orientation_mode_ == visualization_msgs::InteractiveMarkerControl::INHERIT )
+  {
+    control_frame_node_->setOrientation(parent_->getOrientation());
+    markers_node_->setOrientation(parent_->getOrientation());
+    intitial_orientation_ = parent_->getOrientation();
+  }
+
+  makeMarkers( message );
+
+  enableInteraction(vis_manager_->getSelectionManager()->getInteractionEnabled());
 }
 
 // This is an Ogre::SceneManager::Listener function, and is configured

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Willow Garage, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +27,59 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RVIZ_VISUALIZATION_PANEL_H
-#define RVIZ_VISUALIZATION_PANEL_H
+#ifndef RVIZ_SCREENSHOT_DIALOG_H
+#define RVIZ_SCREENSHOT_DIALOG_H
 
-#include <QSplitter>
+#include <QWidget>
 
-#include <string>
+class QPixmap;
+class QAbstractButton;
+class QDialogButtonBox;
+class QTimer;
+class QCheckBox;
 
 namespace rviz
 {
 
-class Config;
-class RenderPanel;
-class DisplaysPanel;
-class VisualizationManager;
+class ScaledImageWidget;
 
-class VisualizationPanel: public QSplitter
+/**
+ * \brief A dialog for grabbing a screen shot.
+ *
+ * Takes the screenshot while in the constructor, then shows a
+ * half-size view of the screenshot in the dialog with buttons for
+ * save/try-again/cancel.
+ */
+class ScreenshotDialog: public QWidget
 {
 Q_OBJECT
 public:
-  VisualizationPanel( QWidget* parent = 0 );
-  ~VisualizationPanel();
+  ScreenshotDialog( QWidget* main_window, QWidget* render_window );
+  virtual ~ScreenshotDialog() {}
 
-  VisualizationManager* getManager() { return manager_; }
-
-  void loadDisplayConfig( const std::string& filepath );
+protected Q_SLOTS:
+  void takeScreenshot();
+  void onTimeout();
+  void takeScreenshotNow();
+  void save();
+  void onButtonClicked( QAbstractButton* clicked );
+  void setSaveFullWindow( bool save_full_window );
 
 protected:
-  RenderPanel* render_panel_;
-  DisplaysPanel* displays_panel_;
+  virtual void showEvent( QShowEvent* event );
 
-  VisualizationManager* manager_;
+private:
+  ScaledImageWidget* image_widget_;
+  QWidget* main_window_;
+  QWidget* render_window_;
+  QPixmap screenshot_;
+  QDialogButtonBox* button_box_;
+  bool save_full_window_;
+  QTimer* delay_timer_;
+  QSize saved_size_;
+  bool first_time_;
 };
 
-}
+} // namespace rviz
 
-#endif // RVIZ_VISUALIZATION_PANEL_H
+#endif // RVIZ_SCREENSHOT_DIALOG_H

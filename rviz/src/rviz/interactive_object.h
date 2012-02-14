@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Willow Garage, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,40 +26,29 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef RVIZ_VISUALIZATION_PANEL_H
-#define RVIZ_VISUALIZATION_PANEL_H
-
-#include <QSplitter>
-
-#include <string>
+#ifndef INTERACTIVE_OBJECT_H
+#define INTERACTIVE_OBJECT_H
 
 namespace rviz
 {
 
-class Config;
-class RenderPanel;
-class DisplaysPanel;
-class VisualizationManager;
+class ViewportMouseEvent;
 
-class VisualizationPanel: public QSplitter
+/** @brief Abstract base class of things in the scene which handle mouse events.
+ *
+ * Currently (visualization-1.8) this is only needed as a bridge
+ * between interactive markers in the default plugin and the
+ * interaction tool in the main executable.  Once the interaction tool
+ * is plugin-ized and put into the default plugin, this can probably
+ * be removed. */
+class InteractiveObject
 {
-Q_OBJECT
 public:
-  VisualizationPanel( QWidget* parent = 0 );
-  ~VisualizationPanel();
-
-  VisualizationManager* getManager() { return manager_; }
-
-  void loadDisplayConfig( const std::string& filepath );
-
-protected:
-  RenderPanel* render_panel_;
-  DisplaysPanel* displays_panel_;
-
-  VisualizationManager* manager_;
+  virtual bool isInteractive() = 0;
+  virtual void enableInteraction( bool enable ) = 0;
+  virtual void handleMouseEvent( ViewportMouseEvent& event ) = 0;
 };
 
-}
+} // end namespace rviz
 
-#endif // RVIZ_VISUALIZATION_PANEL_H
+#endif // INTERACTIVE_OBJECT_H

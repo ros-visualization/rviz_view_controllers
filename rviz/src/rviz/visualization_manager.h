@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Willow Garage, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -86,43 +86,82 @@ typedef std::vector<DisplayWrapper*> V_DisplayWrapper;
 class DisplayTypeInfo;
 typedef boost::shared_ptr<DisplayTypeInfo> DisplayTypeInfoPtr;
 
+/**
+ * \brief The VisualizationManager class is the central manager class
+ *        of rviz, holding all the Displays, Tools, ViewControllers,
+ *        and other managers.
+ *
+ * It keeps the current view controller for the main render window.
+ * It has a timer which calls update() on all the displays.  It
+ * creates and holds pointers to the other manager objects:
+ * SelectionManager, FrameManager, the PropertyManager s, and
+ * Ogre::SceneManager.
+ */
 class VisualizationManager: public QObject
 {
 Q_OBJECT
 public:
   /**
    * \brief Constructor
+   * Creates managers and sets up global properties.
+   * @param render_panel a pointer to the main render panel widget of the app.
+   * @param wm a pointer to the window manager (which is really just a
+   *        VisualizationFrame, the top-level container widget of rviz).
    */
   VisualizationManager(RenderPanel* render_panel, WindowManagerInterface* wm = 0);
+
+  /**
+   * \brief Destructor
+   * Stops update timers and destroys all displays, tools, and managers.
+   */
   virtual ~VisualizationManager();
 
+  /**
+   * \brief Do initialization that wasn't done in constructor.
+   * Sets initial fixed and target frames, adds view controllers and
+   * tools, and initializes SelectionManager.
+   */
   void initialize(const StatusCallback& cb = StatusCallback(), bool verbose=false);
+
+  /**
+   * \brief Start timers.
+   * Creates and starts the update and idle timers, both set to 30Hz (33ms).
+   */
   void startUpdate();
 
   /**
    * \brief Create and add a display to this panel, by class lookup name
    * @param class_lookup_name "lookup name" of the Display subclass, for pluginlib.
-   * @param name The name of this display instance shown on the GUI.
+   *        Should be of the form "packagename/displaynameofclass", like "rviz/Image".
+   * @param name The name of this display instance shown on the GUI, like "Left arm camera".
    * @param enabled Whether to start enabled
-   * @return A pointer to the new display
+   * @return A pointer to the wrapper for the new display
    */
   DisplayWrapper* createDisplay( const std::string& class_lookup_name, const std::string& name, bool enabled );
 
   /**
-   * \brief Remove a display
-   * @param display The display to remove
+   * \brief Remove a display, by wrapper pointer.
+   * @param display The wrapper of the display to remove
    */
   void removeDisplay( DisplayWrapper* display );
+
   /**
-   * \brief Remove a display by name
+   * \brief Remove a display by name.
+   * Removes the display with the given GUI display name, like "Left arm camera".
    * @param name The name of the display to remove
    */
   void removeDisplay( const std::string& name );
+
   /**
    * \brief Remove all displays
    */
   void removeAllDisplays();
 
+  /**
+   * \brief Create and add a tool.
+   * This will go away in visualization 1.9, it is just a
+   * wrapper around the constructor for T and a call to addTool().
+   */
   template< class T >
   T* createTool( const std::string& name, char shortcut_key )
   {
@@ -132,53 +171,152 @@ public:
     return tool;
   }
 
+  /**
+   * \brief Add a tool.
+   * Adds a tool to the list of tools and emits the toolAdded(Tool*) signal.
+   */
   void addTool( Tool* tool );
+
+  /**
+   * \brief Return the tool currently in use.
+   * \sa setCurrentTool()
+   */
   Tool* getCurrentTool() { return current_tool_; }
+
+  /**
+   * \brief Return the tool at a given index in the Tool list.
+   * If index is less than 0 or greater than the number of tools, this
+   * will fail an assertion.
+   */
   Tool* getTool( int index );
+
+  /**
+   * \brief Set the current tool.
+   * The current tool is given all mouse and keyboard events which
+   * VisualizationManager receives via handleMouseEvent() and
+   * handleChar().
+   * \sa getCurrentTool()
+   */
   void setCurrentTool( Tool* tool );
+
+  /**
+   * \brief Set the default tool.
+   *
+   * The default tool is selected directly by pressing the Escape key.
+   * The default tool is indirectly selected when a Tool returns
+   * Finished in the bit field result of Tool::processMouseEvent().
+   * This is how control moves from the InitialPoseTool back to
+   * MoveCamera when InitialPoseTool receives a left mouse button
+   * release event.
+   * \sa getDefaultTool()
+   */
   void setDefaultTool( Tool* tool );
+
+  /**
+   * \brief Get the default tool.
+   * \sa setDefaultTool()
+   */
   Tool* getDefaultTool() { return default_tool_; }
 
-  // The "general" config file stores window geometry, plugin status, and view controller state.
-  void loadGeneralConfig( const boost::shared_ptr<Config>& config, const StatusCallback& cb = StatusCallback() );
-  void saveGeneralConfig( const boost::shared_ptr<Config>& config );
-
-  // The "display" config file stores the properties of each Display.
+  /**
+   * \brief Load the properties of each Display and most editable rviz
+   *        data.
+   * 
+   * This is what is called when loading a "*.vcg" file.
+   * \param config The object to read data from.
+   * \param cb An optional callback function to call with status
+   *        updates, such as "loading displays".
+   * \sa saveDisplayConfig()
+   */
   void loadDisplayConfig( const boost::shared_ptr<Config>& config, const StatusCallback& cb = StatusCallback() );
+
+  /**
+   * \brief Save the properties of each Display and most editable rviz
+   *        data.
+   * 
+   * This is what is called when saving a "*.vcg" file.
+   * \param config The object to write to.
+   * \sa loadDisplayConfig()
+   */
   void saveDisplayConfig( const boost::shared_ptr<Config>& config );
 
   /**
-   * \brief Set the coordinate frame we should be displaying in
-   * @param frame The string name -- must match the frame name broadcast to libTF
+   * \brief Set the coordinate frame whose position the display should track.
+   *
+   * The view controller sets the camera position by looking at the
+   * \em position of the target frame relative to the fixed frame and
+   * adding that to the position of the camera as controlled by the
+   * user.  This lets the user keep the virtual camera following a
+   * robot, for example, but not spinning the camera when the robot
+   * spins.
+   *
+   * \param frame The target frame name -- must match the frame name broadcast to libTF
+   * \sa getTargetFrame()
    */
   void setTargetFrame( const std::string& frame );
+
+  /**
+   * \brief Return the target frame name.
+   * @sa setTargetFrame()
+   */
   std::string getTargetFrame();
 
   /**
-   * \brief Set the coordinate frame we should be transforming all fixed data to
-   * @param frame The string name -- must match the frame name broadcast to libTF
+   * @brief Set the coordinate frame we should be transforming all fixed data into.
+   * @param frame The name of the frame -- must match the frame name broadcast to libTF
+   * @sa getFixedFrame()
    */
   void setFixedFrame( const std::string& frame );
+
+  /**
+   * @brief Return the fixed frame name.
+   * @sa setFixedFrame()
+   */
   const std::string& getFixedFrame() { return fixed_frame_; }
 
   /**
-   * \brief Performs a linear search to find a display wrapper based on its name
+   * @brief Performs a linear search to find a display wrapper based on its name
    * @param name Name of the display to search for
    */
   DisplayWrapper* getDisplayWrapper( const std::string& name );
 
   /**
-   * \brief Performs a linear search to find a display wrapper based on its display
-   * @param display Display to search for
+   * @brief Performs a linear search to find the DisplayWrapper
+   *        holding a given Display.
+   *
+   * @param display Display to search for.
    */
   DisplayWrapper* getDisplayWrapper( Display* display );
 
+  /**
+   * @brief Get the PropertyManager which handles
+   *        <span>Property</span>s of <span>Display</span>s.
+   */
   PropertyManager* getPropertyManager() { return property_manager_; }
+
+  /**
+   * @brief Get the PropertyManager which handles
+   *        <span>Property</span>s of <span>Tool</span>s.
+   */
   PropertyManager* getToolPropertyManager() { return tool_property_manager_; }
 
+  /**
+   * @brief Return true if the given DisplayWrapper is currently in
+   *        the list of displays, false otherwise.
+   *
+   * This does not check that the Display has actually been loaded
+   * into the DisplayWrapper.
+   */
   bool isValidDisplay( const DisplayWrapper* display );
 
+  /**
+   * @brief Convenience function: returns getFrameManager()->getTFClient().
+   */
   tf::TransformListener* getTFClient();
+
+  /**
+   * @brief Returns the Ogre::SceneManager used for the main RenderPanel.
+   */
   Ogre::SceneManager* getSceneManager() { return scene_manager_; }
 
   RenderPanel* getRenderPanel() { return render_panel_; }
@@ -221,23 +359,43 @@ public:
   ros::CallbackQueueInterface* getUpdateQueue() { return ros::getGlobalCallbackQueue(); }
   ros::CallbackQueueInterface* getThreadedQueue() { return &threaded_queue_; }
 
+  /** @brief Return the pluginlib::ClassLoader instance to use for
+   * loading Display subclasses. */
   pluginlib::ClassLoader<Display>* getDisplayClassLoader() { return display_class_loader_; }
-//  PluginManager* getPluginManager() { return plugin_manager_; }
+
+  /** @brief Return the FrameManager instance. */
   FrameManager* getFrameManager() { return frame_manager_.get(); }
 
+  /** @brief Return the current value of the frame count.
+   *
+   * The frame count is just a number which increments each time a
+   * frame is rendered.  This lets clients check if a new frame has
+   * been rendered since the last time they did something. */
   uint64_t getFrameCount() { return frame_count_; }
 
 Q_SIGNALS:
+  /** @brief Emitted just before a DisplayWrapper is added to the list of displays. */
   void displayAdding( DisplayWrapper* );
+
+  /** @brief Emitted after a DisplayWrapper has been added and its
+   * Display has been created, but before the display is enabled for
+   * the first time. */
   void displayAdded( DisplayWrapper* );
+
+  /** @brief Emitted just before a DisplayWrapper is removed from the list of displays. */
   void displayRemoving( DisplayWrapper* );
+
+  /** @brief Emitted just after a DisplayWrapper is removed from the
+   * list of displays, and before it is deleted. */
   void displayRemoved( DisplayWrapper* );
+
+  /** @brief Emitted by removeAllDisplays() just before the list of displays is emptied. */
   void displaysRemoving( const V_DisplayWrapper& );
+
+  /** @brief Emitted by removeAllDisplays() just after the list of displays is emptied. */
   void displaysRemoved( const V_DisplayWrapper& );
   void displaysConfigLoaded( const boost::shared_ptr<Config>& );
   void displaysConfigSaved( const boost::shared_ptr<Config>& );
-  void generalConfigLoaded( const boost::shared_ptr<Config>& );
-  void generalConfigSaving( const boost::shared_ptr<Config>& );
   void toolAdded( Tool* );
   void toolChanged( Tool* );
   void viewControllerTypeAdded( const std::string& class_name, const std::string& name );

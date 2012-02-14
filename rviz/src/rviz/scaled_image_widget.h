@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Willow Garage, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +27,42 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RVIZ_VISUALIZATION_PANEL_H
-#define RVIZ_VISUALIZATION_PANEL_H
+#ifndef RVIZ_SCALED_IMAGE_WIDGET_H
+#define RVIZ_SCALED_IMAGE_WIDGET_H
 
-#include <QSplitter>
-
-#include <string>
+#include <QWidget>
 
 namespace rviz
 {
 
-class Config;
-class RenderPanel;
-class DisplaysPanel;
-class VisualizationManager;
-
-class VisualizationPanel: public QSplitter
+/**
+ * \brief A widget for showing a scaled version of an image (QPixmap).
+ *
+ * The scale is just a suggestion, given to Qt by calls to sizeHint(),
+ * which returns the image size multiplied by the scale.  The actual
+ * rendered size is the largest that fits the image into the current
+ * widget size without changing the aspect ratio.  It is always
+ * rendered in the center.
+ */
+class ScaledImageWidget: public QWidget
 {
 Q_OBJECT
 public:
-  VisualizationPanel( QWidget* parent = 0 );
-  ~VisualizationPanel();
+  ScaledImageWidget( float scale, QWidget* parent = 0 );
+  virtual ~ScaledImageWidget() {}
 
-  VisualizationManager* getManager() { return manager_; }
+  void setImage( QPixmap image );
 
-  void loadDisplayConfig( const std::string& filepath );
+  virtual QSize sizeHint() const;
 
 protected:
-  RenderPanel* render_panel_;
-  DisplaysPanel* displays_panel_;
+  virtual void paintEvent( QPaintEvent* event );
 
-  VisualizationManager* manager_;
+private:
+  QPixmap image_;
+  float scale_;
 };
 
-}
+} // namespace rviz
 
-#endif // RVIZ_VISUALIZATION_PANEL_H
+#endif // RVIZ_SCALED_IMAGE_WIDGET_H

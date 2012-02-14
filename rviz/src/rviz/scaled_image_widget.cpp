@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Willow Garage, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +27,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RVIZ_VISUALIZATION_PANEL_H
-#define RVIZ_VISUALIZATION_PANEL_H
+#include <QWidget>
+#include <QPainter>
 
-#include <QSplitter>
-
-#include <string>
+#include "scaled_image_widget.h"
 
 namespace rviz
 {
 
-class Config;
-class RenderPanel;
-class DisplaysPanel;
-class VisualizationManager;
-
-class VisualizationPanel: public QSplitter
+ScaledImageWidget::ScaledImageWidget( float scale, QWidget* parent )
+  : QWidget( parent )
+  , scale_( scale )
 {
-Q_OBJECT
-public:
-  VisualizationPanel( QWidget* parent = 0 );
-  ~VisualizationPanel();
-
-  VisualizationManager* getManager() { return manager_; }
-
-  void loadDisplayConfig( const std::string& filepath );
-
-protected:
-  RenderPanel* render_panel_;
-  DisplaysPanel* displays_panel_;
-
-  VisualizationManager* manager_;
-};
-
 }
 
-#endif // RVIZ_VISUALIZATION_PANEL_H
+void ScaledImageWidget::setImage( QPixmap image )
+{
+  image_ = image;
+  update();
+}
+
+QSize ScaledImageWidget::sizeHint() const
+{
+  return image_.size() * scale_;
+}
+
+void ScaledImageWidget::paintEvent( QPaintEvent* event )
+{
+  if( !image_.isNull() )
+  {
+    QSize dest_size = image_.size();
+    dest_size.scale( width(), height(), Qt::KeepAspectRatio );
+    QRect dest_rect( width() / 2 - dest_size.width() / 2,
+                     height() / 2 - dest_size.height() / 2,
+                     dest_size.width(),
+                     dest_size.height() );
+
+    QPainter painter( this );
+    painter.drawPixmap( dest_rect, image_ );
+  }
+}
+
+} // end namespace rviz

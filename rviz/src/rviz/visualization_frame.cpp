@@ -68,6 +68,7 @@
 #include "new_object_dialog.h"
 #include "panel.h"
 #include "screenshot_dialog.h"
+#include "help_panel.h"
 
 namespace fs = boost::filesystem;
 
@@ -106,6 +107,8 @@ VisualizationFrame::VisualizationFrame( QWidget* parent )
   , time_panel_(NULL)
   , selection_panel_(NULL)
   , tool_properties_panel_(NULL)
+  , help_panel_(NULL)
+  , show_help_action_(NULL)
   , file_menu_(NULL)
   , recent_configs_menu_(NULL)
   , toolbar_(NULL)
@@ -165,6 +168,7 @@ void VisualizationFrame::initialize(const std::string& display_config_file,
                                     const std::string& fixed_frame,
                                     const std::string& target_frame,
                                     const std::string& splash_path,
+                                    const std::string& help_path,
                                     bool verbose,
                                     bool show_choose_new_master_option )
 {
@@ -190,6 +194,12 @@ void VisualizationFrame::initialize(const std::string& display_config_file,
   if ( splash_path.empty() )
   {
     final_splash_path = (fs::path(package_path_) / "images/splash.png").BOOST_FILE_STRING();
+  }
+
+  help_path_ = help_path;
+  if ( help_path_.empty() )
+  {
+    help_path_ = (fs::path(package_path_) / "help/help.html").BOOST_FILE_STRING();
   }
   QPixmap splash_image( QString::fromStdString( final_splash_path ));
   splash_ = new QSplashScreen( splash_image );
@@ -342,7 +352,8 @@ void VisualizationFrame::initMenus()
 /////
 
   QMenu* help_menu = menuBar()->addMenu( "&Help" );
-  help_menu->addAction( "Wiki", this, SLOT( onHelpWiki() ));
+  help_menu->addAction( "Show &Help panel", this, SLOT( showHelpPanel() ));
+  help_menu->addAction( "Open rviz wiki in browser", this, SLOT( onHelpWiki() ));
 }
 
 void VisualizationFrame::openNewPanelDialog()
@@ -677,12 +688,25 @@ void VisualizationFrame::indicateToolIsCurrent( Tool* tool )
   }
 }
 
-/////void VisualizationFrame::onManagePlugins(wxCommandEvent& event)
-/////{
-/////  PluginManagerDialog dialog(this, manager_->getPluginManager());
-/////  dialog.ShowModal();
-/////}
-/////
+void VisualizationFrame::showHelpPanel()
+{
+  if( !show_help_action_ )
+  {
+    help_panel_ = new HelpPanel( this );
+    QDockWidget* dock = addPane( "Help", help_panel_ );
+    show_help_action_ = dock->toggleViewAction();
+  }
+  else
+  {
+    // show_help_action_ is a toggle action, so trigger() changes its
+    // state.  Therefore we must force it to the opposite state from
+    // what we want before we call trigger().  (I think.)
+    show_help_action_->setChecked( false );
+    show_help_action_->trigger();
+  }
+  help_panel_->setHelpFile( help_path_ );
+}
+
 void VisualizationFrame::onHelpWiki()
 {
   QDesktopServices::openUrl( QUrl( "http://www.ros.org/wiki/rviz" ));

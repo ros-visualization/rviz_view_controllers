@@ -61,6 +61,7 @@ class SelectionPanel;
 class ToolPropertiesPanel;
 class VisualizationManager;
 class Tool;
+class HelpPanel;
 
 /** @brief The main rviz window.
  *
@@ -82,6 +83,7 @@ public:
                    const std::string& fixed_frame = "",
                    const std::string& target_frame = "",
                    const std::string& splash_path = "",
+                   const std::string& help_path = "",
                    bool verbose = false,
                    bool show_choose_new_master_option = false );
 
@@ -101,6 +103,7 @@ protected Q_SLOTS:
   void onRecentConfigSelected();
   void onHelpWiki();
   void openNewPanelDialog();
+  void showHelpPanel();
 
   /** @brief Looks up the Tool for this action and calls
    * VisualizationManager::setCurrentTool(). */
@@ -177,6 +180,9 @@ protected:
   SelectionPanel* selection_panel_;
   ToolPropertiesPanel* tool_properties_panel_;
 
+  HelpPanel* help_panel_;
+  QAction* show_help_action_;
+
   boost::shared_ptr<Config> general_config_;
   boost::shared_ptr<Config> display_config_;
   std::string config_dir_;
@@ -196,6 +202,7 @@ protected:
   VisualizationManager* manager_;
 
   std::string package_path_;
+  std::string help_path_;
 
   QSplashScreen* splash_;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Willow Garage, Inc.
+ * Copyright (c) 2011, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,48 +27,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
+#include <locale>
 
-#include "rviz/panel_dock_widget.h"
+#include "rviz/uniform_string_stream.h"
 
 namespace rviz
 {
 
-PanelDockWidget::PanelDockWidget( const QString& name, QWidget* child )
-  : QDockWidget( name )
-  , child_( child )
-  , visible_( true )
+UniformStringStream::UniformStringStream()
 {
+  imbue( std::locale( "C" ));
 }
 
-void PanelDockWidget::closeEvent( QCloseEvent* event )
+UniformStringStream::UniformStringStream( const std::string& str )
+  : std::stringstream( str )
 {
-  QDockWidget::closeEvent( event );
-  if( visible_ )
-  {
-    Q_EMIT visibilityChanged( false );
-    visible_ = false;
-  }
-}
-
-void PanelDockWidget::hideEvent( QHideEvent* event )
-{
-  QDockWidget::hideEvent( event );
-  if( visible_ )
-  {
-    Q_EMIT visibilityChanged( false );
-    visible_ = false;
-  }
-}
-
-void PanelDockWidget::showEvent( QShowEvent* event )
-{
-  QDockWidget::showEvent( event );
-  if( !visible_ )
-  {
-    Q_EMIT visibilityChanged( true );
-    visible_ = true;
-  }
+  imbue( std::locale( "C" ));
 }
 
 } // end namespace rviz

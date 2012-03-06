@@ -30,6 +30,7 @@
 #include "fixed_orientation_ortho_view_controller.h"
 #include "rviz/viewport_mouse_event.h"
 #include "rviz/visualization_manager.h"
+#include "rviz/uniform_string_stream.h"
 
 #include <OGRE/OgreCamera.h>
 #include <OGRE/OgreSceneManager.h>
@@ -42,7 +43,6 @@
 #include <ogre_helpers/orthographic.h>
 
 #include <stdint.h>
-#include <sstream>
 
 namespace rviz
 {
@@ -154,9 +154,10 @@ void FixedOrientationOrthoViewController::updateCamera()
 
 void FixedOrientationOrthoViewController::setPosition( const Ogre::Vector3& pos_rel_target )
 {
-  // For Z, we use an arbitrary large number smaller than camera's
-  // far-clip-distance (100k).  Any objects above it will not show up.
-  camera_->setPosition( pos_rel_target.x, pos_rel_target.y, 10000 );
+  // For Z, we use half of the far-clip distance set in
+  // selection_manager.cpp, so that the shader program which computes
+  // depth can see equal distances above and below the Z=0 plane.
+  camera_->setPosition( pos_rel_target.x, pos_rel_target.y, 500 );
 }
 
 void FixedOrientationOrthoViewController::move( float x, float y )
@@ -166,7 +167,7 @@ void FixedOrientationOrthoViewController::move( float x, float y )
 
 void FixedOrientationOrthoViewController::fromString(const std::string& str)
 {
-  std::istringstream iss(str);
+  UniformStringStream iss(str);
 
   iss >> scale_;
   iss.ignore();
@@ -183,7 +184,7 @@ void FixedOrientationOrthoViewController::fromString(const std::string& str)
 
 std::string FixedOrientationOrthoViewController::toString()
 {
-  std::ostringstream oss;
+  UniformStringStream oss;
   oss << scale_ << " " << camera_->getPosition().x << " " << camera_->getPosition().y << " " << angle_;
   return oss.str();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Willow Garage, Inc.
+ * Copyright (c) 2011, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,49 +26,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef UNIFORM_STRING_STREAM_H
+#define UNIFORM_STRING_STREAM_H
 
-#include <stdio.h>
-
-#include "rviz/panel_dock_widget.h"
+#include <sstream>
 
 namespace rviz
 {
 
-PanelDockWidget::PanelDockWidget( const QString& name, QWidget* child )
-  : QDockWidget( name )
-  , child_( child )
-  , visible_( true )
+/** @brief std::stringstream subclass which defaults to the "C" locale,
+ * so serialization of numbers is uniform across locales. */
+class UniformStringStream: public std::stringstream
 {
-}
-
-void PanelDockWidget::closeEvent( QCloseEvent* event )
-{
-  QDockWidget::closeEvent( event );
-  if( visible_ )
-  {
-    Q_EMIT visibilityChanged( false );
-    visible_ = false;
-  }
-}
-
-void PanelDockWidget::hideEvent( QHideEvent* event )
-{
-  QDockWidget::hideEvent( event );
-  if( visible_ )
-  {
-    Q_EMIT visibilityChanged( false );
-    visible_ = false;
-  }
-}
-
-void PanelDockWidget::showEvent( QShowEvent* event )
-{
-  QDockWidget::showEvent( event );
-  if( !visible_ )
-  {
-    Q_EMIT visibilityChanged( true );
-    visible_ = true;
-  }
-}
+public:
+  UniformStringStream();
+  UniformStringStream( const std::string& str );
+};
 
 } // end namespace rviz
+
+#endif // UNIFORM_STRING_STREAM_H

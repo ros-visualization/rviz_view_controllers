@@ -87,21 +87,24 @@ void FPSViewController::handleMouseEvent(ViewportMouseEvent& event)
     int32_t diff_x = event.x - event.last_x;
     int32_t diff_y = event.y - event.last_y;
 
-    if( event.left() && !event.shift() )
+    if( diff_x != 0 || diff_y != 0 )
     {
-      yaw( -diff_x*0.005 );
-      pitch( diff_y*0.005 );
-    }
-    else if( event.middle() || ( event.shift() && event.left() ))
-    {
-      move( diff_x*0.01, -diff_y*0.01, 0.0f );
-    }
-    else if( event.right() )
-    {
-      move( 0.0f, 0.0f, diff_y*0.1 );
-    }
+      if( event.left() && !event.shift() )
+      {
+        yaw( -diff_x*0.005 );
+        pitch( diff_y*0.005 );
+      }
+      else if( event.middle() || ( event.shift() && event.left() ))
+      {
+        move( diff_x*0.01, -diff_y*0.01, 0.0f );
+      }
+      else if( event.right() )
+      {
+        move( 0.0f, 0.0f, diff_y*0.1 );
+      }
 
-    moved = true;
+      moved = true;
+    }
   }
 
   if ( event.wheel_delta != 0 )
@@ -151,6 +154,7 @@ void FPSViewController::setYawPitchFromCamera()
 
   normalizePitch();
   normalizeYaw();
+  emitConfigChanged();
 }
 
 void FPSViewController::onActivate()
@@ -222,6 +226,7 @@ void FPSViewController::yaw( float angle )
   yaw_ += angle;
 
   normalizeYaw();
+  emitConfigChanged();
 }
 
 void FPSViewController::pitch( float angle )
@@ -229,31 +234,29 @@ void FPSViewController::pitch( float angle )
   pitch_ += angle;
 
   normalizePitch();
+  emitConfigChanged();
 }
 
 void FPSViewController::move( float x, float y, float z )
 {
   Ogre::Vector3 translate( x, y, z );
   camera_->setPosition( camera_->getPosition() + camera_->getOrientation() * translate );
+  emitConfigChanged();
 }
 
 void FPSViewController::fromString(const std::string& str)
 {
   UniformStringStream iss(str);
 
-  iss >> pitch_;
-  iss.ignore();
-  iss >> yaw_;
-  iss.ignore();
+  iss.parseFloat( pitch_ );
+  iss.parseFloat( yaw_ );
 
   Ogre::Vector3 vec;
-  iss >> vec.x;
-  iss.ignore();
-  iss >> vec.y;
-  iss.ignore();
-  iss >> vec.z;
-  iss.ignore();
+  iss.parseFloat( vec.x );
+  iss.parseFloat( vec.y );
+  iss.parseFloat( vec.z );
   camera_->setPosition(vec);
+  emitConfigChanged();
 }
 
 std::string FPSViewController::toString()

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Willow Garage, Inc.
+ * Copyright (c) 2011, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,58 +26,28 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef WIDGET_GEOMETRY_CHANGE_DETECTOR_H
+#define WIDGET_GEOMETRY_CHANGE_DETECTOR_H
 
-#ifndef RVIZ_FIXED_ORIENTATION_ORTHO_VIEW_CONTROLLER_H
-#define RVIZ_FIXED_ORIENTATION_ORTHO_VIEW_CONTROLLER_H
-
-#include "rviz/view_controller.h"
-
-#include <OGRE/OgreQuaternion.h>
-
-namespace rviz
-{
-class Shape;
-class SceneNode;
-}
+#include <QObject>
 
 namespace rviz
 {
 
-class FixedOrientationOrthoViewController : public ViewController
+/** @brief Utility class for watching for events which indicate that widget geometry has changed. */
+class WidgetGeometryChangeDetector: public QObject
 {
+Q_OBJECT
 public:
-  FixedOrientationOrthoViewController(VisualizationManager* manager, const std::string& name, Ogre::SceneNode* target_scene_node);
-  virtual ~FixedOrientationOrthoViewController();
+  WidgetGeometryChangeDetector( QObject* parent = NULL );
 
-  virtual void handleMouseEvent(ViewportMouseEvent& evt);
-  virtual void fromString(const std::string& str);
-  virtual std::string toString();
+  virtual bool eventFilter( QObject* watched, QEvent* event );
 
-  virtual void lookAt( const Ogre::Vector3& point_rel_world );
-
-  static std::string getClassNameStatic() { return "rviz::FixedOrientationOrthoViewController"; }
-  virtual std::string getClassName() { return getClassNameStatic(); }
-
-  virtual void reset();
-
-protected:
-  virtual void onActivate();
-  virtual void onDeactivate();
-  virtual void onUpdate(float dt, float ros_dt);
-  virtual void onTargetFrameChanged(const Ogre::Vector3& old_reference_position, const Ogre::Quaternion& old_reference_orientation);
-
-  /** Set the camera orientation based on angle_. */
-  void orientCamera();
-
-  void setPosition( const Ogre::Vector3& pos_rel_target );
-  void move( float x, float y );
-  void updateCamera();
-
-  float scale_;
-  float angle_;
-  bool dragging_;
+Q_SIGNALS:
+  /** @brief This signal is emitted whenever any filtered events are detected. */
+  void changed();
 };
 
-}
+} // end namespace rviz
 
-#endif // RVIZ_VIEW_CONTROLLER_H
+#endif // WIDGET_GEOMETRY_CHANGE_DETECTOR_H

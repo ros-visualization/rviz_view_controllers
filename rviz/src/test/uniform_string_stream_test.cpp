@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Willow Garage, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,57 +27,60 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RVIZ_FIXED_ORIENTATION_ORTHO_VIEW_CONTROLLER_H
-#define RVIZ_FIXED_ORIENTATION_ORTHO_VIEW_CONTROLLER_H
+#include <locale>
 
-#include "rviz/view_controller.h"
+#include <gtest/gtest.h>
+#include <rviz/uniform_string_stream.h>
 
-#include <OGRE/OgreQuaternion.h>
+using namespace rviz;
 
-namespace rviz
+TEST( UniformStringStream, parse_floats )
 {
-class Shape;
-class SceneNode;
+  UniformStringStream uss( "1,2 3.4 5,6e2" );
+  float a, b, c;
+  uss.parseFloat( a );
+  uss.parseFloat( b );
+  uss.parseFloat( c );
+  EXPECT_TRUE( !!uss );
+  EXPECT_EQ( a, 1.2f );
+  EXPECT_EQ( b, 3.4f );
+  EXPECT_EQ( c, 560.0f );
+  uss.parseFloat( a );
+  EXPECT_FALSE( !!uss );
 }
 
-namespace rviz
+TEST( UniformStringStream, parse_ints )
 {
-
-class FixedOrientationOrthoViewController : public ViewController
-{
-public:
-  FixedOrientationOrthoViewController(VisualizationManager* manager, const std::string& name, Ogre::SceneNode* target_scene_node);
-  virtual ~FixedOrientationOrthoViewController();
-
-  virtual void handleMouseEvent(ViewportMouseEvent& evt);
-  virtual void fromString(const std::string& str);
-  virtual std::string toString();
-
-  virtual void lookAt( const Ogre::Vector3& point_rel_world );
-
-  static std::string getClassNameStatic() { return "rviz::FixedOrientationOrthoViewController"; }
-  virtual std::string getClassName() { return getClassNameStatic(); }
-
-  virtual void reset();
-
-protected:
-  virtual void onActivate();
-  virtual void onDeactivate();
-  virtual void onUpdate(float dt, float ros_dt);
-  virtual void onTargetFrameChanged(const Ogre::Vector3& old_reference_position, const Ogre::Quaternion& old_reference_orientation);
-
-  /** Set the camera orientation based on angle_. */
-  void orientCamera();
-
-  void setPosition( const Ogre::Vector3& pos_rel_target );
-  void move( float x, float y );
-  void updateCamera();
-
-  float scale_;
-  float angle_;
-  bool dragging_;
-};
-
+  UniformStringStream uss( "1 2 -3" );
+  int a, b, c;
+  uss >> a;
+  uss >> b;
+  uss >> c;
+  EXPECT_TRUE( !!uss );
+  EXPECT_EQ( a, 1 );
+  EXPECT_EQ( b, 2 );
+  EXPECT_EQ( c, -3 );
+  uss >> a;
+  EXPECT_FALSE( !!uss );
 }
 
-#endif // RVIZ_VIEW_CONTROLLER_H
+TEST( UniformStringStream, print_floats )
+{
+  UniformStringStream uss;
+  uss << 1.2f;
+  EXPECT_EQ( uss.str(), "1.2" );
+
+  std::locale old_locale = std::locale::global( std::locale( "de_DE.utf8" ));
+
+  UniformStringStream uss2;
+  uss2 << 3.4f;
+  EXPECT_EQ( uss2.str(), "3.4" );
+
+  std::locale::global( old_locale );
+}
+
+int main(int argc, char **argv){
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+

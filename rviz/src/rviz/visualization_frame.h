@@ -48,6 +48,7 @@
 class QSplashScreen;
 class QAction;
 class QActionGroup;
+class QTimer;
 
 namespace rviz
 {
@@ -62,6 +63,7 @@ class ToolPropertiesPanel;
 class VisualizationManager;
 class Tool;
 class HelpPanel;
+class WidgetGeometryChangeDetector;
 
 /** @brief The main rviz window.
  *
@@ -96,9 +98,15 @@ public:
                                     Qt::DockWidgetArea area = Qt::LeftDockWidgetArea,
                                     bool floating = true );
 
+public Q_SLOTS:
+  /** @brief Call this to let the frame know that something that would
+   *         get saved in the display config has changed. */
+  void setDisplayConfigModified();
+
 protected Q_SLOTS:
   void onOpen();
-  void onSave();
+  void save();
+  void saveAs();
   void onSaveImage();
   void onRecentConfigSelected();
   void onHelpWiki();
@@ -137,14 +145,25 @@ protected Q_SLOTS:
    * the name of the panel. */
   void onDeletePanel();
 
-protected:
-  void initConfigs();
-  void initMenus();
-  void loadDisplayConfig(const std::string& path);
-  void saveConfigs();
+protected Q_SLOTS:
+  /** @brief Set loading_ to false. */
+  void markLoadingDone();
 
-  void moveEvent( QMoveEvent* event );
-  void closeEvent( QCloseEvent* event );
+protected:
+  /** @brief Initialize the default config directory (~/.rviz) and set
+   * up the general_config_file_ and display_config_file_
+   * variables.
+   * @param display_config_file_override The display config file passed in to initialize(). */
+  void initConfigs( const std::string& display_config_file_override );
+
+  void initMenus();
+
+  /** @brief Check for unsaved changes, prompt to save config, etc.
+   * @return true if it is OK to exit, false if not. */
+  bool prepareToExit();
+
+  virtual void moveEvent( QMoveEvent* event );
+  virtual void closeEvent( QCloseEvent* event );
 
   void setSplashStatus( const std::string& status );
 
@@ -164,14 +183,34 @@ protected:
   void loadWindowGeometry( const boost::shared_ptr<Config>& config );
   void saveWindowGeometry( const boost::shared_ptr<Config>& config );
 
-  /** @brief Load display and other settings from the given config object.
-   * @param The config object to read from.
-   * @param cb Optional.  Callback function to call with status updates, such as "loading displays".*/
-  void loadDisplayConfig( const boost::shared_ptr<Config>& config, const StatusCallback& cb = StatusCallback() );
+  /** @brief Load the "general" config file, which has just the few
+   * things which should not be saved with a display config.
+   *
+   * Loads from the file named in general_config_file_. */
+  void loadGeneralConfig();
 
-  /** @brief Save display and other settings to the given config object.
-   * @param The config object to write to. */
-  void saveDisplayConfig( const boost::shared_ptr<Config>& config );
+  /** @brief Save the "general" config file, which has just the few
+   * things which should not be saved with a display config.
+   *
+   * Saves to the file named in general_config_file_. */
+  void saveGeneralConfig();
+
+  /** @brief Load display and other settings from the given file.
+   * @param path The full path of the config file to load from. */
+  void loadDisplayConfig( const std::string& path );
+
+  /** @brief Save display and other settings to the given file.
+   * @param path The full path of the config file to save into. */
+  void saveDisplayConfig( const std::string& path );
+
+  /** @brief Return true if the give file is writable, false if not. */
+  bool fileIsWritable( const std::string& path );
+  
+  /** @brief Set the display config file path.
+   *
+   * This does not load the given file, it just sets the member
+   * variable and updates the window title. */
+  void setDisplayConfigFile( const std::string& path );
 
   RenderPanel* render_panel_;
   DisplaysPanel* displays_panel_;
@@ -183,12 +222,12 @@ protected:
   HelpPanel* help_panel_;
   QAction* show_help_action_;
 
-  boost::shared_ptr<Config> general_config_;
-  boost::shared_ptr<Config> display_config_;
   std::string config_dir_;
   std::string general_config_file_;
   std::string display_config_file_;
+  std::string default_display_config_file_;
   std::string last_config_dir_;
+  std::string home_dir_;
 
   QMenu* file_menu_;
   QMenu* recent_configs_menu_;
@@ -231,6 +270,10 @@ protected:
   };
   typedef std::map<std::string, PanelRecord> M_PanelRecord;
   M_PanelRecord custom_panels_;
+  bool initialized_;
+  WidgetGeometryChangeDetector* geom_change_detector_;
+  bool loading_; ///< True just when loading a display config file, false all other times.
+  QTimer* post_load_timer_; ///< Single-shot timer for calling postLoad() a short time after loadDisplayConfig() finishes.
 };
 
 }

@@ -29,6 +29,7 @@ qt4_wrap_cpp(MOC_FILES
   properties/edit_enum_item.h
   properties/enum_item.h
   properties/line_edit_with_button.h
+  properties/property_manager.h
   properties/property_tree_widget.h
   properties/property_tree_with_help.h
   properties/ros_topic_dialog.h
@@ -41,12 +42,14 @@ qt4_wrap_cpp(MOC_FILES
   selection/selection_manager.h
   time_panel.h
   tool_properties_panel.h
+  view_controller.h
   views_panel.h
   visualization_frame.h
   visualization_manager.h
   visualization_panel.h
   visualizer_app.h
   wait_for_master_dialog.h
+  widget_geometry_change_detector.h
   )
 
 rosbuild_add_library(${PROJECT_NAME}
@@ -120,6 +123,7 @@ rosbuild_add_library(${PROJECT_NAME}
                                     selection/selection_manager.cpp
                                     selection/selection_handler.cpp
                                     uniform_string_stream.cpp
+                                    widget_geometry_change_detector.cpp
                                     ${VERSION_FILE}
                                     ${MOC_FILES}
                                     )

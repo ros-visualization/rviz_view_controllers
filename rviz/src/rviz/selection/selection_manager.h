@@ -150,6 +150,12 @@ public:
                            const std::string& invocation, 
                            bool& skipThisInvocation );
 
+  /** @brief Get the viewport currently being rendered to. Used by
+   * recipients of pre- and post-render callbacks to determine where
+   * the rendering is happening; returns NULL when called not between
+   * those callbacks. */
+  Ogre::Viewport* getCurrentViewport() { return current_viewport_; }
+
 Q_SIGNALS:
   void selectionSet( const M_Picked& old_selection, const M_Picked& new_selection );
   void selectionSetting();
@@ -228,6 +234,10 @@ protected:
   Ogre::Technique *fallback_pick_technique_;
 
   uint32_t texture_size_;
+
+  // The viewport currently being rendered to. Used by recepients of pre- and post-render callbacks
+  // to determine where the rendering is happening; set to NULL outside of those callbacks.
+  Ogre::Viewport *current_viewport_;
 };
 
 } // namespace rviz
